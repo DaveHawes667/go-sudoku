@@ -108,7 +108,7 @@ func (s *square) init() {
 	for i,_ := range s.m_cells{
 		s.m_cells[i] = make(cellPtrSlice, SQUARE_SIZE)
 	}
-	fmt.Println(s.m_cells)
+	//fmt.Println(s.m_cells)
 }
 
 //A horizontal or vertical line of 9 cells through the entire grid.
@@ -194,7 +194,6 @@ func (g *grid) Init() {
 		
 	}
 	
-	fmt.Println("0")
 	g.m_rows = make([]line, ROW_LENGTH)
 	g.m_cols = make([]line,COL_LENGTH)
 	
@@ -202,34 +201,29 @@ func (g *grid) Init() {
 	//handy for doing iterations over all different ways of looking at the cells
 	g.m_sets = make([]Solver,len(g.m_squares) + len(g.m_rows) + len(g.m_cols))
 	
-	fmt.Println("1")
 	var idx int
 	for _,s := range g.m_squares{
 		g.m_sets[idx] = &s
 		idx++
 	}
 	
-	fmt.Println("2")
 	
 	for _,r := range g.m_rows{
 		g.m_sets[idx] = &r
 		idx++ 
 	}
 	
-	fmt.Println("3")
 	
 	for _,c := range g.m_cols{
 		g.m_sets[idx] = &c
 		idx++ 
 	}
 	
-	fmt.Println("4")
 }
 
 func (g grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	g.Init()
 	
-	fmt.Println("5")
 	
 	for x:=0; x<COL_LENGTH; x++{
 		for y:=0; y<ROW_LENGTH; y++{
@@ -248,7 +242,6 @@ func (g grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	
 	//fmt.Println(g)
 	
-	fmt.Println("6")
 }
 
 func (g grid) Solved() (bool,*SolveError) {
@@ -269,8 +262,6 @@ func (g grid) Solved() (bool,*SolveError) {
 
 func (g grid) String() string {
 	var str string
-	fmt.Println("grid str 1")
-	fmt.Println(g.m_cells)
 	
 	if len(g.m_cells) < COL_LENGTH{
 		return "Grid probably not initialised"
@@ -291,7 +282,6 @@ func (g grid) String() string {
 		}
 		str+="\n"
 	}
-	fmt.Println("grid str 2")
 	return str
 }
 
