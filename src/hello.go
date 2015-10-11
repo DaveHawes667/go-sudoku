@@ -221,7 +221,7 @@ func (g *grid) Init() {
 	
 }
 
-func (g grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
+func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	g.Init()
 	
 	
