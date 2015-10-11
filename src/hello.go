@@ -28,15 +28,28 @@ type cell struct {
 	m_possible map[int]bool 
 }
 
-func (c cell) SetKnownTo(value int){
+func (c *cell) init(){
+	c.m_possible = make(map[int]bool,9)
+	for i:=1; i<=9; i++{
+		c.m_possible[i] = true
+	}
+	fmt.Print("After cell init: ")
+	fmt.Println(c.m_possible)
+}
+
+func (c *cell) SetKnownTo(value int){
+	//fmt.Println("before delete")
+	//fmt.Println(c.m_possible)
 	for k,_ := range c.m_possible{
 		if k != value {
 			delete(c.m_possible,k)
 		}
 	} 
+	//fmt.Print("SetKnownTo: " + strconv.Itoa(value) + " ")
+	//fmt.Println(c.m_possible)
 }
 
-func (c cell) TakeKnownFromPossible(known []int){
+func (c *cell) TakeKnownFromPossible(known []int){
 	for _,v := range known{
 		delete(c.m_possible,v)
 	}
@@ -135,11 +148,11 @@ type grid struct {
 	m_cells		[][]cell
 }
 
-func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (grid, *SolveError){
+func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, *SolveError){
 	var g grid
 	g.Init();
 	g.Fill(puzzle)
-	return g,nil
+	return &g,nil
 } 
 
 func (g *grid) Init() {
@@ -147,7 +160,13 @@ func (g *grid) Init() {
 	g.m_cells = make([][]cell,COL_LENGTH)
 	for i,_ := range g.m_cells{
 		g.m_cells[i] = make([]cell, ROW_LENGTH)
+		
+		for _,c := range g.m_cells[i]{
+			c.init()
+		}
 	} 
+	
+	
 	
 	//Init each of the grouping structures that view portions of the grid
 	
@@ -233,8 +252,8 @@ func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 			var puzzVal = puzzle[x][y]
 			
 			if puzzVal >=1 && puzzVal<=9{
-				/*fmt.Print("g.m_cells[x][y]: ")
-				fmt.Println(g.m_cells[x][y])*/
+				//fmt.Print("g.m_cells[x][y]: ")
+				//fmt.Println(g.m_cells[x][y])
 				g.m_cells[x][y].SetKnownTo(puzzVal)
 			}
 		}
@@ -274,8 +293,8 @@ func (g grid) String() string {
 				return "Error in grid not all rows correctly initialised"
 			}
 			
-			fmt.Println("x" + strconv.Itoa(x))
-			fmt.Println("y" + strconv.Itoa(y))
+			//fmt.Println("x" + strconv.Itoa(x))
+			//fmt.Println("y" + strconv.Itoa(y))
 			
 			cell := g.m_cells[y][x]
 			str += cell.String()
@@ -303,9 +322,6 @@ func main() {
 	var g grid
 	
 	g.Fill(puzzle)
-	fmt.Println("Main 1")
-	fmt.Println(g.m_cells)
-	fmt.Println("Main 2")
 	fmt.Println(g)
 }
 
