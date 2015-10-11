@@ -64,7 +64,7 @@ func (c cell) Known() (int, *SolveError){
 func (c cell) String() string {
 	val,err := c.Known()
 	if(err != nil){
-		return err.Error()
+		return "x"
 	}
 	
 	return strconv.Itoa(val)
@@ -103,11 +103,12 @@ func (s square) Solved() (bool,*SolveError) {
 	}
 	return true,nil
 }
-func (s square) init() {
+func (s *square) init() {
 	s.m_cells = make([][]*cell,SQUARE_SIZE)
 	for i,_ := range s.m_cells{
 		s.m_cells[i] = make(cellPtrSlice, SQUARE_SIZE)
 	}
+	fmt.Println(s.m_cells)
 }
 
 //A horizontal or vertical line of 9 cells through the entire grid.
@@ -141,7 +142,7 @@ func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (grid, *SolveError){
 	return g,nil
 } 
 
-func (g grid) Init() {
+func (g *grid) Init() {
 	//Init the raw cells themselves that actually store the grid data
 	g.m_cells = make([][]cell,COL_LENGTH)
 	for i,_ := range g.m_cells{
@@ -169,13 +170,31 @@ func (g grid) Init() {
 				//is this correct?
 				gridX := SQUARE_SIZE * (squareIdx % SQUARE_SIZE) + x 
 				gridY := SQUARE_SIZE * (squareIdx / SQUARE_SIZE) + y
-				g.m_squares[squareIdx].m_cells[x][y] = &g.m_cells[gridX][gridY]
+				
+				/*fmt.Println("squareIdx: " + strconv.Itoa(squareIdx))
+				fmt.Println("gridX: " + strconv.Itoa(gridX))
+				fmt.Println("gridY: " + strconv.Itoa(gridY))
+				fmt.Println("x: " + strconv.Itoa(x))
+				fmt.Println("y: " + strconv.Itoa(y))*/
+				
+				cellPtr := &g.m_cells[gridX][gridY]
+				/*fmt.Println(len(g.m_squares))
+				fmt.Println(len(g.m_squares[squareIdx].m_cells))
+				fmt.Println(len(g.m_squares[squareIdx].m_cells[x]))
+				fmt.Print("Cells in square")
+				fmt.Println(g.m_squares[squareIdx].m_cells)
+				fmt.Print("Cells in square.m_cell[x]")
+				fmt.Println(g.m_squares[squareIdx].m_cells[x])
+				fmt.Println(g.m_squares[squareIdx].m_cells[x][y])
+				fmt.Println(cellPtr)
+				fmt.Println(g.m_cells[gridX][gridY])*/
+				g.m_squares[squareIdx].m_cells[x][y] = cellPtr
 			}
 		}
 		
 	}
 	
-	
+	fmt.Println("0")
 	g.m_rows = make([]line, ROW_LENGTH)
 	g.m_cols = make([]line,COL_LENGTH)
 	
@@ -183,34 +202,53 @@ func (g grid) Init() {
 	//handy for doing iterations over all different ways of looking at the cells
 	g.m_sets = make([]Solver,len(g.m_squares) + len(g.m_rows) + len(g.m_cols))
 	
+	fmt.Println("1")
 	var idx int
 	for _,s := range g.m_squares{
 		g.m_sets[idx] = &s
 		idx++
 	}
 	
+	fmt.Println("2")
+	
 	for _,r := range g.m_rows{
 		g.m_sets[idx] = &r
 		idx++ 
 	}
 	
+	fmt.Println("3")
+	
 	for _,c := range g.m_cols{
 		g.m_sets[idx] = &c
 		idx++ 
 	}
+	
+	fmt.Println("4")
 }
 
 func (g grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	g.Init()
 	
+	fmt.Println("5")
+	
 	for x:=0; x<COL_LENGTH; x++{
 		for y:=0; y<ROW_LENGTH; y++{
+			/*fmt.Println("x" + strconv.Itoa(x))
+			fmt.Println("y" + strconv.Itoa(y))
+			fmt.Println("len(puzzle[x])" + strconv.Itoa(len(puzzle[x])))*/
 			var puzzVal = puzzle[x][y]
+			
 			if puzzVal >=1 && puzzVal<=9{
+				/*fmt.Print("g.m_cells[x][y]: ")
+				fmt.Println(g.m_cells[x][y])*/
 				g.m_cells[x][y].SetKnownTo(puzzVal)
 			}
 		}
 	}
+	
+	//fmt.Println(g)
+	
+	fmt.Println("6")
 }
 
 func (g grid) Solved() (bool,*SolveError) {
@@ -231,14 +269,29 @@ func (g grid) Solved() (bool,*SolveError) {
 
 func (g grid) String() string {
 	var str string
+	fmt.Println("grid str 1")
+	fmt.Println(g.m_cells)
+	
+	if len(g.m_cells) < COL_LENGTH{
+		return "Grid probably not initialised"
+	}
+	
 	for x:=0; x < ROW_LENGTH; x++{
 		for y:=0; y < COL_LENGTH; y++{
+			
+			if len(g.m_cells[y]) < ROW_LENGTH{
+				return "Error in grid not all rows correctly initialised"
+			}
+			
+			fmt.Println("x" + strconv.Itoa(x))
+			fmt.Println("y" + strconv.Itoa(y))
+			
 			cell := g.m_cells[y][x]
 			str += cell.String()
 		}
 		str+="\n"
 	}
-	
+	fmt.Println("grid str 2")
 	return str
 }
 
@@ -260,6 +313,9 @@ func main() {
 	var g grid
 	
 	g.Fill(puzzle)
+	fmt.Println("Main 1")
+	fmt.Println(g.m_cells)
+	fmt.Println("Main 2")
 	fmt.Println(g)
 }
 
