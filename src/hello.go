@@ -15,7 +15,7 @@ func (e SolveError) Error() string {
 
 //General solver interface
 type Solver interface {
-	Solved() (bool,SolveError)
+	Solved() (bool,*SolveError)
 }
 
 //Cells which store individual numbers in the grid
@@ -24,7 +24,7 @@ type cell struct {
 }
 
 func (c cell) SetKnownTo(value int){
-	for k,v := range c.m_possible{
+	for k,_ := range c.m_possible{
 		if k != value {
 			delete(c.m_possible,k)
 		}
@@ -56,49 +56,71 @@ func (c cell) Known() (int, *SolveError){
 	return 0,&SolveError{"Error in cell storage of known values"}
 }
 
-func (cells []*cell) Solved() bool{
+type cellPtrSlice []*cell 
+
+func (cells cellPtrSlice) Solved() (bool, *SolveError){
 	for _,c := range cells{
 		_,err := c.Known();
 		if err != nil{
-			return false
+			return false,err
 		}
 	}
+	
+	return true,nil
 }
 
 //Squares which represent one of each of the 9 squares in a grid, each of which 
 //references a 3x3 collection of cells.
+
 type square struct {
-	m_cells []*cell
+	m_cells [][]*cell
 }
 
-func (s square) Solved() (bool,SolveError) {
-	return m_cells.Solved(),nil
+func (s square) Solved() (bool,*SolveError) {
+	for _,r := range s.m_cells{
+		solved,err := cellPtrSlice(r).Solved()
+		if(err != nil){
+			return false,err
+		}
+		if !solved {
+			return false,nil
+		}
+		
+	}
+	return true,nil
+}
+func (s square) init() {
+	s.m_cells = make([][]*cell,SQUARE_SIZE)
+	for i,_ := range s.m_cells{
+		s.m_cells[i] = make(cellPtrSlice, SQUARE_SIZE)
+	}
 }
 
 //A horizontal or vertical line of 9 cells through the entire grid.
 type line struct {
-	m_cells []*cell
+	m_cells cellPtrSlice
 }
 
-func (l line) Solved() (bool,SolveError) {
-	return m_cells.Solved()
+func (l line) Solved() (bool,*SolveError) {
+	return l.m_cells.Solved()
 }
 
 //Grid which represents the 3x3 collection of squares which represent the entire puzzle
 const ROW_LENGTH = 9
 const COL_LENGTH = 9
 const NUM_SQUARES = COL_LENGTH
+const SQUARE_SIZE = 3
 
 type grid struct {
 	m_squares 	[]square
 	m_rows		[]line
 	m_cols		[]line
 	
-	m_sets		[]*solver
-	m_cells		[]cell
+	m_sets		[]Solver
+	m_cells		[][]cell
 }
 
-func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (grid, SolveError){
+func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (grid, *SolveError){
 	var g grid
 	g.Init();
 	g.Fill(puzzle)
@@ -107,28 +129,59 @@ func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (grid, SolveError){
 
 func (g grid) Init() {
 	//Init the raw cells themselves that actually store the grid data
-	g.m_cells = make([]cell,COL_LENGTH*ROW_LENGTH)
+	g.m_cells = make([][]cell,COL_LENGTH)
+	for i,_ := range g.m_cells{
+		g.m_cells[i] = make([]cell, ROW_LENGTH)
+	} 
 	
 	//Init each of the grouping structures that view portions of the grid
+	
+	/*
+	
+	Squares are indexed into the grid as folows
+	
+	S0 S1 S2
+	S3 S4 S5
+	S6 S7 S8
+	
+	*/
 	g.m_squares = make([]square,NUM_SQUARES)
+	
+	for squareIdx :=0; squareIdx<NUM_SQUARES; squareIdx++{
+		
+		g.m_squares[squareIdx].init()
+		for x :=0; x<SQUARE_SIZE; x++{
+			for y:= 0; y<SQUARE_SIZE; y++{
+				gridX := SQUARE_SIZE * (squareIdx % SQUARE_SIZE) + (x%SQUARE_SIZE)
+				gridY := SQUARE_SIZE * (squareIdx % SQUARE_SIZE) + (y%SQUARE_SIZE)
+				g.m_squares[squareIdx].m_cells[x][y] = &g.m_cells[gridX][gridY]
+			}
+		}
+		
+	}
+	
+	
 	g.m_rows = make([]line, ROW_LENGTH)
 	g.m_cols = make([]line,COL_LENGTH)
 	
 	//Make m_sets just a big long list of all the cell grouping structures
 	//handy for doing iterations over all different ways of looking at the cells
-	g.m_sets = make([]*solver,len(g.m_squares) + len(g.m_rows) + len(g.m_cols))
+	g.m_sets = make([]Solver,len(g.m_squares) + len(g.m_rows) + len(g.m_cols))
 	
 	var idx int
 	for _,s := range g.m_squares{
-		g.m_sets[idx++] = s 
+		g.m_sets[idx] = &s
+		idx++
 	}
 	
 	for _,r := range g.m_rows{
-		g.m_sets[idx++] = r 
+		g.m_sets[idx] = &r
+		idx++ 
 	}
 	
 	for _,c := range g.m_cols{
-		g.m_sets[idx++] = c 
+		g.m_sets[idx] = &c
+		idx++ 
 	}
 }
 
@@ -136,20 +189,20 @@ func (g grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	
 }
 
-func (g grid) Solved() bool {
+func (g grid) Solved() (bool,*SolveError) {
 	for _,s := range g.m_sets{
-		solved,err = s.solved()
+		solved,err := s.Solved()
 		if err != nil{
 			fmt.Println("Error during Solved() check on grid: " + err.Error())
-			return false
+			return false,err
 		}
 		
-		if !solved){
-			return false
+		if !solved{
+			return false,nil
 		}
 	}
 	
-	return true
+	return true,nil
 }
 
 type result struct {
