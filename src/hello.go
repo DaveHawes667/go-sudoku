@@ -43,10 +43,19 @@ func (c *cell) SetKnownTo(value int){
 	} 
 }
 
-func (c *cell) TakeKnownFromPossible(known []int){
+func (c *cell) TakeKnownFromPossible(known []int) bool{
+	
+	var possibles = len(c.m_possible)
+	
 	for _,v := range known{
 		delete(c.m_possible,v)
 	}
+	
+	return possibles != len(c.m_possible) //did we take any?
+}
+
+func (c* cell) IsKnown() bool{
+	return len(c.m_possible) == 1
 }
 
 func (c *cell) Known() (int, *SolveError){
@@ -115,6 +124,43 @@ func (s *square) init() {
 	for i,_ := range s.m_cells{
 		s.m_cells[i] = make(cellPtrSlice, SQUARE_SIZE)
 	}
+}
+
+func (s* square) KnownInSquare() ([]int,*SolveError){
+	known := make([]int,0,SQUARE_SIZE*SQUARE_SIZE)
+	for x,_ := range s.m_cells{
+		for y,_ := range s.m_cells[x]{
+			c := s.m_cells[x][y]
+			val,err := c.Known()
+			if err != nil{
+				return known,err
+			}
+			known = append(known,val)
+		}
+	}
+	
+	return known,nil
+}
+
+func (s* square) ReducePossible() (bool,*SolveError) {
+	known,err := s.KnownInSquare()
+	reduced := false
+	if err != nil {
+		return false,err
+	}
+	
+	for x,_ := range s.m_cells{
+		for y,_ := range s.m_cells[x]{
+			c := s.m_cells[x][y]
+			if !c.IsKnown(){
+				if c.TakeKnownFromPossible(known){
+					reduced = true
+				}
+			}
+			
+		}
+	}
+	return reduced,nil
 }
 
 //A horizontal or vertical line of 9 cells through the entire grid.
