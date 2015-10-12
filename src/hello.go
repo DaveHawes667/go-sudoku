@@ -21,6 +21,7 @@ func (e SolveError) String() string {
 //General solver interface
 type Solver interface {
 	Solved() (bool,*SolveError)
+	reducePossible() (bool,*SolveError)
 }
 
 //Cells which store individual numbers in the grid
@@ -43,7 +44,7 @@ func (c *cell) SetKnownTo(value int){
 	} 
 }
 
-func (c *cell) TakeKnownFromPossible(known []int) bool{
+func (c *cell) TakeKnownFromPossible(known []int) (bool,*SolveError){
 	
 	var possibles = len(c.m_possible)
 	
@@ -51,7 +52,7 @@ func (c *cell) TakeKnownFromPossible(known []int) bool{
 		delete(c.m_possible,v)
 	}
 	
-	return possibles != len(c.m_possible) //did we take any?
+	return possibles != len(c.m_possible),nil //did we take any?
 }
 
 func (c* cell) IsKnown() bool{
@@ -99,6 +100,35 @@ func (cells cellPtrSlice) Solved() (bool, *SolveError){
 	return true,nil
 }
 
+func (cells cellPtrSlice) Known() ([]int, *SolveError){
+	known := make([]int,0, len(cells))
+	for _,c := range cells{
+		if c.IsKnown(){
+			val,err := c.Known()
+			if err != nil{
+				return known,err
+			}
+			known = append(known,val)
+		}
+	}
+	
+	return known,nil
+}
+
+func (cells cellPtrSlice) TakeKnownFromPossible(known []int) (bool,*SolveError){
+	
+	changed := false
+	for _,c := range cells{
+		taken, err := c.TakeKnownFromPossible(known)
+		if err != nil{
+			return false,err
+		}
+		changed = changed || taken
+	}
+	
+	return changed,nil
+}
+
 //Squares which represent one of each of the 9 squares in a grid, each of which 
 //references a 3x3 collection of cells.
 
@@ -142,7 +172,7 @@ func (s* square) KnownInSquare() ([]int,*SolveError){
 	return known,nil
 }
 
-func (s* square) ReducePossible() (bool,*SolveError) {
+func (s* square) reducePossible() (bool,*SolveError) {
 	known,err := s.KnownInSquare()
 	reduced := false
 	if err != nil {
@@ -150,15 +180,12 @@ func (s* square) ReducePossible() (bool,*SolveError) {
 	}
 	
 	for x,_ := range s.m_cells{
-		for y,_ := range s.m_cells[x]{
-			c := s.m_cells[x][y]
-			if !c.IsKnown(){
-				if c.TakeKnownFromPossible(known){
-					reduced = true
-				}
-			}
-			
+		cells := s.m_cells[x]
+		changed, err := cellPtrSlice(cells).TakeKnownFromPossible(known)
+		if err != nil{
+			return false,err
 		}
+		reduced = reduced || changed
 	}
 	return reduced,nil
 }
@@ -170,6 +197,21 @@ type line struct {
 
 func (l line) Solved() (bool,*SolveError) {
 	return l.m_cells.Solved()
+}
+
+func (l* line) reducePossible() (bool,*SolveError) {
+	known,err := l.m_cells.Known()
+	
+	if err != nil {
+		return false,err
+	}
+	
+	reduced, err := l.m_cells.TakeKnownFromPossible(known)
+	if err != nil{
+		return false,err
+	}
+		
+	return reduced,nil
 }
 
 //Grid which represents the 3x3 collection of squares which represent the entire puzzle
@@ -296,6 +338,61 @@ func (g grid) Solved() (bool,*SolveError) {
 	}
 	
 	return true,nil
+}
+
+func(g *grid) reducePossiblePass() (bool, *SolveError){
+	changed := false
+	for i,_ := range g.m_sets{
+		reduced,err := g.m_sets[i].reducePossible()
+		if err != nil{
+			return false,err
+		}
+		changed = changed || reduced
+	}
+	
+	return changed,nil
+}
+
+func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
+	var puzzle [COL_LENGTH][ROW_LENGTH]int
+	for x,_ := range puzzle{
+		for y,_ := range puzzle[x]{
+			if g.m_cells[x][y].IsKnown(){
+				var err *SolveError
+				puzzle[x][y],err = g.m_cells[x][y].Known()
+				if err != nil{
+					return puzzle
+				}
+			}
+		}
+	}
+	
+	return puzzle
+}
+
+func (g *grid) DuplicateGrid() (*grid,*SolveError){
+	return New(g.Puzzle())
+}
+
+func (g *grid) Solve() (bool,*SolveError){
+	var err *SolveError
+	for changed:=true; changed;{
+		changed, err = g.reducePossiblePass()
+		if err != nil{
+			return false,err
+		}
+	}
+	
+	solved,err := g.Solved()
+	if err != nil{
+			return false,err
+	}
+	
+	if solved{
+		return solved,nil
+	}
+	
+	return false,nil
 }
 
 func (g grid) String() string {
