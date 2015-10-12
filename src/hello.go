@@ -33,20 +33,14 @@ func (c *cell) init(){
 	for i:=1; i<=9; i++{
 		c.m_possible[i] = true
 	}
-	fmt.Print("After cell init: ")
-	fmt.Println(c.m_possible)
 }
 
 func (c *cell) SetKnownTo(value int){
-	//fmt.Println("before delete")
-	//fmt.Println(c.m_possible)
 	for k,_ := range c.m_possible{
 		if k != value {
 			delete(c.m_possible,k)
 		}
 	} 
-	//fmt.Print("SetKnownTo: " + strconv.Itoa(value) + " ")
-	//fmt.Println(c.m_possible)
 }
 
 func (c *cell) TakeKnownFromPossible(known []int){
@@ -121,7 +115,6 @@ func (s *square) init() {
 	for i,_ := range s.m_cells{
 		s.m_cells[i] = make(cellPtrSlice, SQUARE_SIZE)
 	}
-	//fmt.Println(s.m_cells)
 }
 
 //A horizontal or vertical line of 9 cells through the entire grid.
@@ -164,16 +157,9 @@ func (g *grid) Init() {
 		for j :=0; j< len(g.m_cells[i]); j++{
 			c := &g.m_cells[i][j]
 			c.init()
-			fmt.Print("in grid Init: ")
-			fmt.Println(c.m_possible)
 		}
 	} 
-	
-	fmt.Print("early grid Init: ")
-	fmt.Println(g.m_cells[0][0].m_possible)
-	
-	
-	
+		
 	//Init each of the grouping structures that view portions of the grid
 	
 	/*
@@ -196,23 +182,7 @@ func (g *grid) Init() {
 				gridX := SQUARE_SIZE * (squareIdx % SQUARE_SIZE) + x 
 				gridY := SQUARE_SIZE * (squareIdx / SQUARE_SIZE) + y
 				
-				/*fmt.Println("squareIdx: " + strconv.Itoa(squareIdx))
-				fmt.Println("gridX: " + strconv.Itoa(gridX))
-				fmt.Println("gridY: " + strconv.Itoa(gridY))
-				fmt.Println("x: " + strconv.Itoa(x))
-				fmt.Println("y: " + strconv.Itoa(y))*/
-				
 				cellPtr := &g.m_cells[gridX][gridY]
-				/*fmt.Println(len(g.m_squares))
-				fmt.Println(len(g.m_squares[squareIdx].m_cells))
-				fmt.Println(len(g.m_squares[squareIdx].m_cells[x]))
-				fmt.Print("Cells in square")
-				fmt.Println(g.m_squares[squareIdx].m_cells)
-				fmt.Print("Cells in square.m_cell[x]")
-				fmt.Println(g.m_squares[squareIdx].m_cells[x])
-				fmt.Println(g.m_squares[squareIdx].m_cells[x][y])
-				fmt.Println(cellPtr)
-				fmt.Println(g.m_cells[gridX][gridY])*/
 				g.m_squares[squareIdx].m_cells[x][y] = cellPtr
 			}
 		}
@@ -226,28 +196,27 @@ func (g *grid) Init() {
 	//handy for doing iterations over all different ways of looking at the cells
 	g.m_sets = make([]Solver,len(g.m_squares) + len(g.m_rows) + len(g.m_cols))
 	
+	
 	var idx int
-	for _,s := range g.m_squares{
-		g.m_sets[idx] = &s
+	for i := 0; i<len(g.m_squares); i++{
+		s:= &g.m_squares[i]
+		g.m_sets[idx] = s
 		idx++
 	}
 	
 	
-	for _,r := range g.m_rows{
-		g.m_sets[idx] = &r
+	for i:=0; i<len(g.m_rows); i++{
+		r:=&g.m_rows[i]
+		g.m_sets[idx] = r
 		idx++ 
 	}
 	
 	
-	for _,c := range g.m_cols{
-		g.m_sets[idx] = &c
+	for i:= 0; i<len(g.m_cols); i++{
+		c := &g.m_cols[i]
+		g.m_sets[idx] = c
 		idx++ 
 	}
-	
-	fmt.Println(g.m_cells)
-	
-	fmt.Print("end grid Init: ")
-	fmt.Println(g.m_cells[0][0].m_possible)
 	
 }
 
@@ -257,20 +226,13 @@ func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	
 	for x:=0; x<COL_LENGTH; x++{
 		for y:=0; y<ROW_LENGTH; y++{
-			/*fmt.Println("x" + strconv.Itoa(x))
-			fmt.Println("y" + strconv.Itoa(y))
-			fmt.Println("len(puzzle[x])" + strconv.Itoa(len(puzzle[x])))*/
 			var puzzVal = puzzle[y][x]
 			
 			if puzzVal >=1 && puzzVal<=9{
-				//fmt.Print("g.m_cells[x][y]: ")
-				//fmt.Println(g.m_cells[x][y])
 				g.m_cells[x][y].SetKnownTo(puzzVal)
 			}
 		}
 	}
-	
-	//fmt.Println(g)
 	
 }
 
@@ -303,9 +265,6 @@ func (g grid) String() string {
 			if len(g.m_cells[y]) < ROW_LENGTH{
 				return "Error in grid not all rows correctly initialised"
 			}
-			
-			//fmt.Println("x" + strconv.Itoa(x))
-			//fmt.Println("y" + strconv.Itoa(y))
 			
 			cell := g.m_cells[y][x]
 			str += cell.String()
