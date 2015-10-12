@@ -55,7 +55,7 @@ func (c *cell) TakeKnownFromPossible(known []int){
 	}
 }
 
-func (c cell) Known() (int, *SolveError){
+func (c *cell) Known() (int, *SolveError){
 	
 	// by convention we delete from the map possibles that are no longer possible
 	// so we just need to check map length to see if the cell is solved
@@ -158,13 +158,19 @@ func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, *SolveError){
 func (g *grid) Init() {
 	//Init the raw cells themselves that actually store the grid data
 	g.m_cells = make([][]cell,COL_LENGTH)
-	for i,_ := range g.m_cells{
+	for i :=0; i< len(g.m_cells); i++{
 		g.m_cells[i] = make([]cell, ROW_LENGTH)
 		
-		for _,c := range g.m_cells[i]{
+		for j :=0; j< len(g.m_cells[i]); j++{
+			c := &g.m_cells[i][j]
 			c.init()
+			fmt.Print("in grid Init: ")
+			fmt.Println(c.m_possible)
 		}
 	} 
+	
+	fmt.Print("early grid Init: ")
+	fmt.Println(g.m_cells[0][0].m_possible)
 	
 	
 	
@@ -238,6 +244,11 @@ func (g *grid) Init() {
 		idx++ 
 	}
 	
+	fmt.Println(g.m_cells)
+	
+	fmt.Print("end grid Init: ")
+	fmt.Println(g.m_cells[0][0].m_possible)
+	
 }
 
 func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
@@ -249,7 +260,7 @@ func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 			/*fmt.Println("x" + strconv.Itoa(x))
 			fmt.Println("y" + strconv.Itoa(y))
 			fmt.Println("len(puzzle[x])" + strconv.Itoa(len(puzzle[x])))*/
-			var puzzVal = puzzle[x][y]
+			var puzzVal = puzzle[y][x]
 			
 			if puzzVal >=1 && puzzVal<=9{
 				//fmt.Print("g.m_cells[x][y]: ")
