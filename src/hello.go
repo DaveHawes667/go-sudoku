@@ -78,6 +78,18 @@ func (c *cell) Known() (int, *SolveError){
 	return 0,&SolveError{"Error in cell storage of known values"}
 }
 
+func (c *cell) Possibles() ([]int,*SolveError){
+	possibles := make([]int,0,len(c.m_possible))
+	
+	for k,v := range c.m_possible{
+		if v{
+			possibles = append(possibles,k)
+		}
+	}
+	
+	return possibles,nil
+}
+
 func (c cell) String() string {
 	val,err := c.Known()
 	if(err != nil){
@@ -359,7 +371,7 @@ func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 		for y,_ := range puzzle[x]{
 			if g.m_cells[x][y].IsKnown(){
 				var err *SolveError
-				puzzle[x][y],err = g.m_cells[x][y].Known()
+				puzzle[y][x],err = g.m_cells[x][y].Known()
 				if err != nil{
 					return puzzle
 				}
@@ -370,29 +382,132 @@ func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 	return puzzle
 }
 
+func (g *grid) setKnown( x,y, known int) *SolveError{
+	//should probably check if grid is initialised and return error if it isn't
+	g.m_cells[x][y].SetKnownTo(known)
+	
+	return nil
+}
+
 func (g *grid) DuplicateGrid() (*grid,*SolveError){
 	return New(g.Puzzle())
 }
 
-func (g *grid) Solve() (bool,*SolveError){
+func (g* grid) TotalPossible() (int, *SolveError){
+	totalPoss := 0
+	for x,_ := range g.m_cells{
+		for y,_:= range g.m_cells[x]{
+			if !g.m_cells[x][y].IsKnown(){
+				val,err := g.m_cells[x][y].Possibles()
+				if err != nil{
+					return 0,err
+				}
+				numPoss := len(val)
+				totalPoss += numPoss
+			}
+		}
+		
+	}	
+	return totalPoss,nil
+}
+
+func (g *grid) GenerateGuessGrids() ([]*grid, *SolveError){
+	
+	totalPoss,err := g.TotalPossible()
+	guesses := make([]*grid,0,totalPoss)
+	if err != nil{
+		return guesses,err
+	}
+	
+	for x,_ := range g.m_cells{
+		for y,_:= range g.m_cells[x]{
+			if !g.m_cells[x][y].IsKnown(){
+				
+				possibles,err := g.m_cells[x][y].Possibles()
+				if err!=nil{
+					return guesses,err
+				}
+				
+				for _,v := range possibles{
+					guess,err := g.DuplicateGrid()
+					if err!=nil{
+						return guesses,err
+					}
+					err = guess.setKnown(x,y,v)
+					if err!=nil{
+						return guesses,err
+					}
+					guesses = append(guesses,guess)
+					
+				}
+			}
+		}
+	}
+	
+	
+	return guesses,nil
+	
+}
+
+type SolveResult struct{
+	m_grid 		*grid
+	m_solved 	bool
+}
+
+func startSolveRoutine(ch chan SolveResult, g *grid) {
+	
+	defer close(ch)
+	res, err := g.Solve()
+	if err != nil{
+		//this error might be expected, we might have sent in an invalid puzzle
+		//only care about this response to print or pass on in the root call to solve.
+		return
+	}
+	 
+	ch<-*res
+}
+
+func (g *grid) Solve() (*SolveResult,*SolveError){
 	var err *SolveError
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
 		if err != nil{
-			return false,err
+			return &SolveResult{nil,false},err
 		}
 	}
 	
 	solved,err := g.Solved()
 	if err != nil{
-			return false,err
+			return &SolveResult{nil,false},err
 	}
 	
 	if solved{
-		return solved,nil
+		return &SolveResult{g,true},nil
 	}
 	
-	return false,nil
+	guesses,err := g.GenerateGuessGrids()
+	
+	if err!=nil{
+		return &SolveResult{g,false},err
+	}
+	
+	resChans := make([]chan SolveResult,0,len(guesses))
+	
+	for _,guess := range guesses{
+		ch := make(chan SolveResult)
+		go startSolveRoutine(ch,guess)
+		resChans = append(resChans,ch)
+	}
+	
+	for i,_ := range resChans{
+		for res:= range resChans[i] {
+			if res.m_solved{
+				return &res,nil
+			}
+		}
+	}
+	
+	return &SolveResult{nil,false},&SolveError{"Unable to solve puzzle"}
 }
 
 func (g grid) String() string {
@@ -436,5 +551,8 @@ func main() {
 	
 	g.Fill(puzzle)
 	fmt.Println(g)
+	g2,_:=g.DuplicateGrid()
+	fmt.Println()
+	fmt.Println(g2)
 }
 
