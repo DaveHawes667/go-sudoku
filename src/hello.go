@@ -104,9 +104,8 @@ type cellPtrSlice []*cell
 
 func (cells cellPtrSlice) Solved() (bool, error){
 	for _,c := range cells{
-		_,err := c.Known();
-		if err != nil{
-			return false,err
+		if !c.IsKnown(){
+			return false,nil
 		}
 	}
 	
@@ -174,11 +173,13 @@ func (s* square) KnownInSquare() ([]int,error){
 	for x,_ := range s.m_cells{
 		for y,_ := range s.m_cells[x]{
 			c := s.m_cells[x][y]
-			val,err := c.Known()
-			if err != nil{
-				return known,err
-			}
-			known = append(known,val)
+			if c.IsKnown(){
+				val,err := c.Known()
+				if err != nil{
+					return known,err
+				}
+				known = append(known,val)	
+			}	
 		}
 	}
 	
