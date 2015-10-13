@@ -551,8 +551,14 @@ func main() {
 	
 	g.Fill(puzzle)
 	fmt.Println(g)
-	g2,_:=g.DuplicateGrid()
-	fmt.Println()
-	fmt.Println(g2)
+	res,err := g.Solve()
+	if err != nil{
+		fmt.Println("Error solving puzzle: " + err.Error())
+	}else{
+		fmt.Println("")
+		fmt.Println("Solution Found")
+		fmt.Println(*res.m_grid)
+	}
+	
 }
 
