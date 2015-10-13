@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"github.com/go-errors/errors"
 )
 
 //General solver error
@@ -10,12 +11,12 @@ type SolveError struct{
 	m_info string
 }
 
-func (e SolveError) Error() string {
-	return e.m_info
+func (e SolveError) Error() error {
+	return errors.Errorf(e.m_info)
 }
 
 func (e SolveError) String() string {
-	return e.Error()
+	return e.m_info + e.Error().(*errors.Error).ErrorStack()
 }
 
 //General solver interface
@@ -340,7 +341,7 @@ func (g grid) Solved() (bool,*SolveError) {
 	for _,s := range g.m_sets{
 		solved,err := s.Solved()
 		if err != nil{
-			fmt.Println("Error during Solved() check on grid: " + err.Error())
+			fmt.Println("Error during Solved() check on grid: " + err.String())
 			return false,err
 		}
 		
@@ -553,7 +554,7 @@ func main() {
 	fmt.Println(g)
 	res,err := g.Solve()
 	if err != nil{
-		fmt.Println("Error solving puzzle: " + err.Error())
+		fmt.Println("Error solving puzzle: " + err.String())
 	}else{
 		fmt.Println("")
 		fmt.Println("Solution Found")
