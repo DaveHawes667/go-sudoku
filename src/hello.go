@@ -11,18 +11,18 @@ type SolveError struct{
 	m_info string
 }
 
-func (e SolveError) Error() error {
-	return errors.Errorf(e.m_info)
+func (e SolveError) Error() string {
+	return e.String()
 }
 
 func (e SolveError) String() string {
-	return e.m_info + e.Error().(*errors.Error).ErrorStack()
+	return e.m_info
 }
 
 //General solver interface
 type Solver interface {
-	Solved() (bool,*SolveError)
-	reducePossible() (bool,*SolveError)
+	Solved() (bool,error)
+	reducePossible() (bool,error)
 }
 
 //Cells which store individual numbers in the grid
@@ -45,7 +45,7 @@ func (c *cell) SetKnownTo(value int){
 	} 
 }
 
-func (c *cell) TakeKnownFromPossible(known []int) (bool,*SolveError){
+func (c *cell) TakeKnownFromPossible(known []int) (bool,error){
 	
 	var possibles = len(c.m_possible)
 	
@@ -60,12 +60,12 @@ func (c* cell) IsKnown() bool{
 	return len(c.m_possible) == 1
 }
 
-func (c *cell) Known() (int, *SolveError){
+func (c *cell) Known() (int, error){
 	
 	// by convention we delete from the map possibles that are no longer possible
 	// so we just need to check map length to see if the cell is solved
 	if len(c.m_possible)!=1{
-		return 0,&SolveError{"Value not yet known for this cell"}
+		return 0,errors.Wrap(SolveError{"Value not yet known for this cell"},1)
 	}
 	
 	//Only one key is now considered "possible", it's value should be true, and it should
@@ -76,10 +76,10 @@ func (c *cell) Known() (int, *SolveError){
 		}
 	}
 	
-	return 0,&SolveError{"Error in cell storage of known values"}
+	return 0,errors.Wrap(SolveError{"Error in cell storage of known values"},1)
 }
 
-func (c *cell) Possibles() ([]int,*SolveError){
+func (c *cell) Possibles() ([]int,error){
 	possibles := make([]int,0,len(c.m_possible))
 	
 	for k,v := range c.m_possible{
@@ -102,7 +102,7 @@ func (c cell) String() string {
 
 type cellPtrSlice []*cell 
 
-func (cells cellPtrSlice) Solved() (bool, *SolveError){
+func (cells cellPtrSlice) Solved() (bool, error){
 	for _,c := range cells{
 		_,err := c.Known();
 		if err != nil{
@@ -113,7 +113,7 @@ func (cells cellPtrSlice) Solved() (bool, *SolveError){
 	return true,nil
 }
 
-func (cells cellPtrSlice) Known() ([]int, *SolveError){
+func (cells cellPtrSlice) Known() ([]int, error){
 	known := make([]int,0, len(cells))
 	for _,c := range cells{
 		if c.IsKnown(){
@@ -128,7 +128,7 @@ func (cells cellPtrSlice) Known() ([]int, *SolveError){
 	return known,nil
 }
 
-func (cells cellPtrSlice) TakeKnownFromPossible(known []int) (bool,*SolveError){
+func (cells cellPtrSlice) TakeKnownFromPossible(known []int) (bool,error){
 	
 	changed := false
 	for _,c := range cells{
@@ -149,7 +149,7 @@ type square struct {
 	m_cells [][]*cell
 }
 
-func (s square) Solved() (bool,*SolveError) {
+func (s square) Solved() (bool,error) {
 	for _,r := range s.m_cells{
 		solved,err := cellPtrSlice(r).Solved()
 		if(err != nil){
@@ -169,7 +169,7 @@ func (s *square) init() {
 	}
 }
 
-func (s* square) KnownInSquare() ([]int,*SolveError){
+func (s* square) KnownInSquare() ([]int,error){
 	known := make([]int,0,SQUARE_SIZE*SQUARE_SIZE)
 	for x,_ := range s.m_cells{
 		for y,_ := range s.m_cells[x]{
@@ -185,7 +185,7 @@ func (s* square) KnownInSquare() ([]int,*SolveError){
 	return known,nil
 }
 
-func (s* square) reducePossible() (bool,*SolveError) {
+func (s* square) reducePossible() (bool,error) {
 	known,err := s.KnownInSquare()
 	reduced := false
 	if err != nil {
@@ -208,11 +208,11 @@ type line struct {
 	m_cells cellPtrSlice
 }
 
-func (l line) Solved() (bool,*SolveError) {
+func (l line) Solved() (bool,error) {
 	return l.m_cells.Solved()
 }
 
-func (l* line) reducePossible() (bool,*SolveError) {
+func (l* line) reducePossible() (bool,error) {
 	known,err := l.m_cells.Known()
 	
 	if err != nil {
@@ -242,7 +242,7 @@ type grid struct {
 	m_cells		[][]cell
 }
 
-func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, *SolveError){
+func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, error){
 	var g grid
 	g.Init();
 	g.Fill(puzzle)
@@ -337,11 +337,11 @@ func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	
 }
 
-func (g grid) Solved() (bool,*SolveError) {
+func (g grid) Solved() (bool,error) {
 	for _,s := range g.m_sets{
 		solved,err := s.Solved()
 		if err != nil{
-			fmt.Println("Error during Solved() check on grid: " + err.String())
+			fmt.Println("Error during Solved() check on grid: " + err.Error())
 			return false,err
 		}
 		
@@ -353,7 +353,7 @@ func (g grid) Solved() (bool,*SolveError) {
 	return true,nil
 }
 
-func(g *grid) reducePossiblePass() (bool, *SolveError){
+func(g *grid) reducePossiblePass() (bool, error){
 	changed := false
 	for i,_ := range g.m_sets{
 		reduced,err := g.m_sets[i].reducePossible()
@@ -371,7 +371,7 @@ func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 	for x,_ := range puzzle{
 		for y,_ := range puzzle[x]{
 			if g.m_cells[x][y].IsKnown(){
-				var err *SolveError
+				var err error
 				puzzle[y][x],err = g.m_cells[x][y].Known()
 				if err != nil{
 					return puzzle
@@ -383,18 +383,18 @@ func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 	return puzzle
 }
 
-func (g *grid) setKnown( x,y, known int) *SolveError{
+func (g *grid) setKnown( x,y, known int) error{
 	//should probably check if grid is initialised and return error if it isn't
 	g.m_cells[x][y].SetKnownTo(known)
 	
 	return nil
 }
 
-func (g *grid) DuplicateGrid() (*grid,*SolveError){
+func (g *grid) DuplicateGrid() (*grid,error){
 	return New(g.Puzzle())
 }
 
-func (g* grid) TotalPossible() (int, *SolveError){
+func (g* grid) TotalPossible() (int, error){
 	totalPoss := 0
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
@@ -412,7 +412,7 @@ func (g* grid) TotalPossible() (int, *SolveError){
 	return totalPoss,nil
 }
 
-func (g *grid) GenerateGuessGrids() ([]*grid, *SolveError){
+func (g *grid) GenerateGuessGrids() ([]*grid, error){
 	
 	totalPoss,err := g.TotalPossible()
 	guesses := make([]*grid,0,totalPoss)
@@ -468,8 +468,8 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 	ch<-*res
 }
 
-func (g *grid) Solve() (*SolveResult,*SolveError){
-	var err *SolveError
+func (g *grid) Solve() (*SolveResult,error){
+	var err error
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
 		if err != nil{
@@ -508,7 +508,7 @@ func (g *grid) Solve() (*SolveResult,*SolveError){
 		}
 	}
 	
-	return &SolveResult{nil,false},&SolveError{"Unable to solve puzzle"}
+	return &SolveResult{nil,false},errors.Wrap(SolveError{"Unable to solve puzzle"},1)
 }
 
 func (g grid) String() string {
@@ -554,7 +554,9 @@ func main() {
 	fmt.Println(g)
 	res,err := g.Solve()
 	if err != nil{
-		fmt.Println("Error solving puzzle: " + err.String())
+		fmt.Println("Error solving puzzle: " + err.Error())
+		fmt.Println("Stacktrace")
+		fmt.Println(err.(*errors.Error).ErrorStack())
 	}else{
 		fmt.Println("")
 		fmt.Println("Solution Found")
