@@ -34,7 +34,7 @@ func validate(known []int) bool{
 		if validNums[v]{
 			validNums[v] = false
 		}else{
-			fmt.Println("same number is known in two cells, that is invalid!")
+			//fmt.Println("same number is known in two cells, that is invalid!")
 			return false 
 		}
 	}
@@ -44,23 +44,26 @@ func validate(known []int) bool{
 
 //Cells which store individual numbers in the grid
 type cell struct {
-	m_possible map[int]bool 
+	m_possible 	map[int]bool 
+	m_x,m_y 	int
 }
 
-func (c *cell) init(){
+func (c *cell) init(x,y int){
 	c.m_possible = make(map[int]bool,9)
 	for i:=1; i<=9; i++{
 		c.m_possible[i] = true
 	}
+	c.m_x = x
+	c.m_y = y
 }
 
 func (c *cell) validate() bool{
 	if len(c.m_possible) < 1{
-		fmt.Println("Less than one possible in a cell, that is invalid")
+		//fmt.Println("Less than one possible in a cell, that is invalid")
 		return false
 	}
 	if len(c.m_possible) > 9{
-		fmt.Println("More than nine possible in a cell, that is invalid")
+		//fmt.Println("More than nine possible in a cell, that is invalid")
 		return false
 	}
 	return true
@@ -244,16 +247,74 @@ func (s* square) validate() bool{
 	known,err := s.KnownInSquare()
 	
 	if err != nil {
-		fmt.Println("Error from KnownInSquare, that is invalid")
+		//fmt.Println("Error from KnownInSquare, that is invalid")
 		return false
 	}
 	
 	return validate(known)
 }
 
+type pair struct{
+	m_values 		[2]int
+	m_rowAligned	bool
+	m_rowOrColNum	int
+}
+
+func (s* square) AlignedCellOnlyPairs() ([]pair,error){
+	
+	foundPairs := make([]pair,0,SQUARE_SIZE*SQUARE_SIZE)
+	/*
+	for x1,_ := range s.m_cells{
+		for y1,_ := range s.m_cells[x1]{
+			c1 := s.m_cells[x1][y1]
+			if len(c1.m_possible)==2{
+				for x2,_ := range s.m_cells{
+					for y2,_ := range s.m_cells[x2]{
+						c2 := s.m_cells[x2][y2]
+						if c1 != c2{
+							if len(c2.m_possible)==2{
+								if x2 == x1 || y2 == y1{
+									matchBoth := true
+									valIdx :=0
+									var foundPair pair
+									for k,v := range c2.m_possible{
+										if val,ok :=c1.m_possible[k]; !ok{
+											matchBoth = false
+										}else{
+											pair.m_values[valIdx] = k
+											valIdx++ 
+										}
+									}
+									if matchBoth{
+										foundPair.m_rowAligned = y2==y1
+										if foundPair.m_rowAligned{
+											foundPair.m_rowOrColNum = c1.m_y										
+										}else{
+											foundPair.m_rowOrColNum = c1.m_x										
+										}
+										foundPairs = append(foundPairs,foundPair)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}*/
+	
+	return foundPairs,nil
+}
+
 //A horizontal or vertical line of 9 cells through the entire grid.
 type line struct {
-	m_cells cellPtrSlice
+	m_cells 		cellPtrSlice
+	m_rowAligned	bool
+	m_rowOrColNum	int
+}
+
+func(l *line) init(){
+	l.m_cells = make([]*cell,COL_LENGTH,COL_LENGTH)
 }
 
 func (l line) Solved() (bool,error) {
@@ -279,7 +340,7 @@ func (l* line) validate() bool{
 	known,err := l.m_cells.Known()
 	
 	if err != nil {
-		fmt.Println("Error in line cells Known(), that is invalid")
+		//fmt.Println("Error in line cells Known(), that is invalid")
 		return false
 	}
 	return validate(known)
@@ -311,8 +372,8 @@ func (g *grid) validate() bool{
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
 			if !g.m_cells[x][y].validate(){
-				fmt.Println("cell failed to validate: x:"+strconv.Itoa(x)+" y:"+strconv.Itoa(y))
-				fmt.Println(g.m_cells[x][y].m_possible)
+				//fmt.Println("cell failed to validate: x:"+strconv.Itoa(x)+" y:"+strconv.Itoa(y))
+				//fmt.Println(g.m_cells[x][y].m_possible)
 				
 				return false
 			}	
@@ -336,7 +397,7 @@ func (g *grid) Init() {
 		
 		for j :=0; j< len(g.m_cells[i]); j++{
 			c := &g.m_cells[i][j]
-			c.init()
+			c.init(i,j)
 		}
 	} 
 		
@@ -388,14 +449,26 @@ func (g *grid) Init() {
 	for i:=0; i<len(g.m_rows); i++{
 		r:=&g.m_rows[i]
 		g.m_sets[idx] = r
-		idx++ 
+		idx++
+		r.init() 
+		for colNum:=0; colNum < COL_LENGTH; colNum++{
+			r.m_cells[colNum] = &g.m_cells[colNum][i]
+		}
+		r.m_rowAligned = true
+		r.m_rowOrColNum = i
 	}
 	
 	
 	for i:= 0; i<len(g.m_cols); i++{
 		c := &g.m_cols[i]
 		g.m_sets[idx] = c
-		idx++ 
+		idx++
+		c.init() 
+		for rowNum:=0; rowNum < ROW_LENGTH; rowNum++{
+			c.m_cells[rowNum] = &g.m_cells[i][rowNum]
+		}
+		c.m_rowAligned = false
+		c.m_rowOrColNum = i
 	}
 	
 }
@@ -433,8 +506,20 @@ func (g grid) Solved() (bool,error) {
 }
 
 func (g *grid) squareExclusionReduce() (bool,error){
-
-	return false,nil	
+	changed := false
+	/*for i,_ := range g.m_squares{
+		s := &g.m_squares[i]
+		pairs, err := s.AlignedCellOnlyPairs()
+		if err != nil{
+			return false,err
+		}
+		for _,p := range pairs{
+			
+		}
+		
+	}*/
+	
+	return changed,nil	
 }
 
 func(g *grid) reducePossiblePass() (bool, error){
@@ -551,7 +636,7 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 	defer close(ch)
 	//fmt.Print("goroutine solver started")
 	res, err := g.Solve()
-	fmt.Println("return from solve")
+	//fmt.Println("return from solve")
 	if err != nil{
 		//this error might be expected, we might have sent in an invalid puzzle
 		//only care about this response to print or pass on in the root call to solve.
@@ -574,7 +659,7 @@ func (g *grid) Solve() (*SolveResult,error){
 			return &SolveResult{nil,false},err
 		}
 		if !g.validate(){
-			fmt.Println("Invalid puzz!")
+			//fmt.Println("Invalid puzz!")
 			return &SolveResult{nil,false},nil //this was probably an invalid guess, just want to stop trying to process this
 		}
 	}
@@ -609,7 +694,7 @@ func (g *grid) Solve() (*SolveResult,error){
 			if res.m_solved{
 				return &res,nil
 			}else{
-				fmt.Println("Failed result returned on channel")
+				//fmt.Println("Failed result returned on channel")
 			}
 		}
 	}
