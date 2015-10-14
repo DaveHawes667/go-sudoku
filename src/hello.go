@@ -34,7 +34,6 @@ func validate(known []int) bool{
 		if validNums[v]{
 			validNums[v] = false
 		}else{
-			//fmt.Println("same number is known in two cells, that is invalid!")
 			return false 
 		}
 	}
@@ -59,11 +58,9 @@ func (c *cell) init(x,y int){
 
 func (c *cell) validate() bool{
 	if len(c.m_possible) < 1{
-		//fmt.Println("Less than one possible in a cell, that is invalid")
 		return false
 	}
 	if len(c.m_possible) > 9{
-		//fmt.Println("More than nine possible in a cell, that is invalid")
 		return false
 	}
 	return true
@@ -245,9 +242,7 @@ func (s* square) reducePossible() (bool,error) {
 
 func (s* square) validate() bool{
 	known,err := s.KnownInSquare()
-	
 	if err != nil {
-		//fmt.Println("Error from KnownInSquare, that is invalid")
 		return false
 	}
 	
@@ -338,9 +333,7 @@ func (l* line) reducePossible() (bool,error) {
 
 func (l* line) validate() bool{
 	known,err := l.m_cells.Known()
-	
 	if err != nil {
-		//fmt.Println("Error in line cells Known(), that is invalid")
 		return false
 	}
 	return validate(known)
@@ -387,9 +380,6 @@ func (g *grid) validate() bool{
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
 			if !g.m_cells[x][y].validate(){
-				//fmt.Println("cell failed to validate: x:"+strconv.Itoa(x)+" y:"+strconv.Itoa(y))
-				//fmt.Println(g.m_cells[x][y].m_possible)
-				
 				return false
 			}	
 		}
@@ -662,9 +652,7 @@ type SolveResult struct{
 func startSolveRoutine(ch chan SolveResult, g *grid) {
 	
 	defer close(ch)
-	//fmt.Print("goroutine solver started")
 	res, err := g.Solve()
-	//fmt.Println("return from solve")
 	if err != nil{
 		//this error might be expected, we might have sent in an invalid puzzle
 		//only care about this response to print or pass on in the root call to solve.
@@ -677,17 +665,12 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 func (g *grid) Solve() (*SolveResult,error){
 	
 	var err error
-	//solvePasses:=0
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
-		//fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
-		//solvePasses++
-		//fmt.Println(g)
 		if err != nil{
 			return &SolveResult{nil,false},err
 		}
 		if !g.validate(){
-			//fmt.Println("Invalid puzz!")
 			return &SolveResult{nil,false},nil //this was probably an invalid guess, just want to stop trying to process this
 		}
 	}
@@ -701,9 +684,7 @@ func (g *grid) Solve() (*SolveResult,error){
 		return &SolveResult{g,true},nil
 	}
 	
-	//fmt.Println("About to generate guess grids")
 	guesses,err := g.GenerateGuessGrids()
-	//fmt.Println("Generated "+strconv.Itoa(len(guesses))+" potential grids")
 	
 	if err!=nil{
 		return &SolveResult{g,false},err
@@ -721,8 +702,6 @@ func (g *grid) Solve() (*SolveResult,error){
 		for res:= range resChans[i] {
 			if res.m_solved{
 				return &res,nil
-			}else{
-				//fmt.Println("Failed result returned on channel")
 			}
 		}
 	}
@@ -772,24 +751,6 @@ func main() {
 	g.Fill(puzzle)
 	fmt.Println("Puzzle to solve")
 	fmt.Println(g)
-	/*
-	fmt.Println("rows")
-	for i,r := range g.m_rows{
-		fmt.Println("row: " + strconv.Itoa(i) + " length: " + strconv.Itoa(len(r.m_cells)))
-		fmt.Println(r.m_cells)
-		fmt.Println(r)
-	}
-	fmt.Println("end rows")
-	
-	fmt.Println("cols")
-	for i,c := range g.m_cols{
-		fmt.Println("col: " + strconv.Itoa(i) + " length: " + strconv.Itoa(len(c.m_cells)))
-		fmt.Println(c.m_cells)
-		fmt.Println(c)
-	}
-	fmt.Println("end cols")
-	
-	return*/
 	res,err := g.Solve()
 	if err != nil{
 		fmt.Println("Error solving puzzle: " + err.Error())
