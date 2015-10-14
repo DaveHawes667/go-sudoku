@@ -40,14 +40,14 @@ func TestGrid(t *testing.T){
 		
 		res,err := g.Solve()
 		if err != nil{
-			t.Errorf(err.Error())
+			t.Errorf("Test " + strconv.Itoa(i) + ": " + err.Error())
 		}else{
 			if res.Solved() && res.Grid() != nil{
 				if !res.Grid().KnownEquals(solutions[i]){
 					t.Errorf("Test " + strconv.Itoa(i) + ": Solution found, but did not match expected solution instead got\n" + res.Grid().String())
 				}	
 			}else{
-				t.Errorf("unable to solve puzzle")
+				t.Errorf("Test " + strconv.Itoa(i) + ": unable to solve puzzle")
 			}
 			
 		}
