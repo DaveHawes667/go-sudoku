@@ -717,6 +717,18 @@ func (g *Grid) Solve() (*SolveResult,error){
 	return &SolveResult{nil,false},errors.Wrap(SolveError{"Unable to solve puzzle"},1)
 }
 
+func (g *Grid) KnownEquals(puzzle [COL_LENGTH][ROW_LENGTH]int) bool{
+	thisPuzz := g.Puzzle()
+	for x,_ := range puzzle{
+		for y,_ := range puzzle[x]{
+			if puzzle[x][y] != thisPuzz[x][y]{
+				return false
+			}
+		}
+	}
+	return true
+} 
+
 func (g Grid) String() string {
 	var str string
 	
