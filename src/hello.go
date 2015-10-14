@@ -23,6 +23,23 @@ func (e SolveError) String() string {
 type Solver interface {
 	Solved() (bool,error)
 	reducePossible() (bool,error)
+	validate() bool
+}
+
+func validate(known []int) bool{
+	
+	validNums := map[int]bool{1:true,2:true,3:true,4:true,5:true,6:true,7:true,8:true,9:true}
+
+	for _,v := range known{
+		if validNums[v]{
+			validNums[v] = false
+		}else{
+			fmt.Println("same number is known in two cells, that is invalid!")
+			return false 
+		}
+	}
+	
+	return true
 }
 
 //Cells which store individual numbers in the grid
@@ -37,6 +54,18 @@ func (c *cell) init(){
 	}
 }
 
+func (c *cell) validate() bool{
+	if len(c.m_possible) < 1{
+		fmt.Println("Less than one possible in a cell, that is invalid")
+		return false
+	}
+	if len(c.m_possible) > 9{
+		fmt.Println("More than nine possible in a cell, that is invalid")
+		return false
+	}
+	return true
+}
+
 func (c *cell) SetKnownTo(value int){
 	for k,_ := range c.m_possible{
 		if k != value {
@@ -46,11 +75,18 @@ func (c *cell) SetKnownTo(value int){
 }
 
 func (c *cell) TakeKnownFromPossible(known []int) (bool,error){
-	
+
 	var possibles = len(c.m_possible)
 	
-	for _,v := range known{
-		delete(c.m_possible,v)
+	if !c.IsKnown(){		
+		for _,v := range known{
+			delete(c.m_possible,v)
+		}
+		
+		if !c.validate(){
+			errorStr := fmt.Sprintf("TakeKnownFromPossible() made cell invalid: Known:%T:%q", known,known)
+			return false,errors.Wrap(SolveError{errorStr},1)
+		}
 	}
 	
 	return possibles != len(c.m_possible),nil //did we take any?
@@ -204,6 +240,17 @@ func (s* square) reducePossible() (bool,error) {
 	return reduced,nil
 }
 
+func (s* square) validate() bool{
+	known,err := s.KnownInSquare()
+	
+	if err != nil {
+		fmt.Println("Error from KnownInSquare, that is invalid")
+		return false
+	}
+	
+	return validate(known)
+}
+
 //A horizontal or vertical line of 9 cells through the entire grid.
 type line struct {
 	m_cells cellPtrSlice
@@ -228,6 +275,16 @@ func (l* line) reducePossible() (bool,error) {
 	return reduced,nil
 }
 
+func (l* line) validate() bool{
+	known,err := l.m_cells.Known()
+	
+	if err != nil {
+		fmt.Println("Error in line cells Known(), that is invalid")
+		return false
+	}
+	return validate(known)
+}
+
 //Grid which represents the 3x3 collection of squares which represent the entire puzzle
 const ROW_LENGTH = 9
 const COL_LENGTH = 9
@@ -249,6 +306,27 @@ func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, error){
 	g.Fill(puzzle)
 	return &g,nil
 } 
+
+func (g *grid) validate() bool{
+	for x,_ := range g.m_cells{
+		for y,_:= range g.m_cells[x]{
+			if !g.m_cells[x][y].validate(){
+				fmt.Println("cell failed to validate: x:"+strconv.Itoa(x)+" y:"+strconv.Itoa(y))
+				fmt.Println(g.m_cells[x][y].m_possible)
+				
+				return false
+			}	
+		}
+	}
+	
+	for i,_ := range g.m_sets{
+		if !g.m_sets[i].validate(){
+			return false
+		}
+	}
+	
+	return true
+}
 
 func (g *grid) Init() {
 	//Init the raw cells themselves that actually store the grid data
@@ -354,14 +432,27 @@ func (g grid) Solved() (bool,error) {
 	return true,nil
 }
 
+func (g *grid) squareExclusionReduce() (bool,error){
+
+	return false,nil	
+}
+
 func(g *grid) reducePossiblePass() (bool, error){
 	changed := false
-	for i,_ := range g.m_sets{
-		reduced,err := g.m_sets[i].reducePossible()
-		if err != nil{
-			return false,err
+	
+	for pass:=0;pass<2;pass++{
+		for i,_ := range g.m_sets{
+			reduced,err := g.m_sets[i].reducePossible()
+			if err != nil{
+				return false,err
+			}
+			changed = changed || reduced
 		}
-		changed = changed || reduced
+		sqReduce,err := g.squareExclusionReduce()
+		if err != nil{
+				return false,err
+		}
+		changed = changed || sqReduce
 	}
 	
 	return changed,nil
@@ -440,7 +531,6 @@ func (g *grid) GenerateGuessGrids() ([]*grid, error){
 						return guesses,err
 					}
 					guesses = append(guesses,guess)
-					
 				}
 			}
 		}
@@ -459,7 +549,9 @@ type SolveResult struct{
 func startSolveRoutine(ch chan SolveResult, g *grid) {
 	
 	defer close(ch)
+	//fmt.Print("goroutine solver started")
 	res, err := g.Solve()
+	fmt.Println("return from solve")
 	if err != nil{
 		//this error might be expected, we might have sent in an invalid puzzle
 		//only care about this response to print or pass on in the root call to solve.
@@ -470,11 +562,20 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 }
 
 func (g *grid) Solve() (*SolveResult,error){
+	
 	var err error
+	//solvePasses:=0
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
+		//fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
+		//solvePasses++
+		//fmt.Println(g)
 		if err != nil{
 			return &SolveResult{nil,false},err
+		}
+		if !g.validate(){
+			fmt.Println("Invalid puzz!")
+			return &SolveResult{nil,false},nil //this was probably an invalid guess, just want to stop trying to process this
 		}
 	}
 	
@@ -487,7 +588,9 @@ func (g *grid) Solve() (*SolveResult,error){
 		return &SolveResult{g,true},nil
 	}
 	
+	//fmt.Println("About to generate guess grids")
 	guesses,err := g.GenerateGuessGrids()
+	//fmt.Println("Generated "+strconv.Itoa(len(guesses))+" potential grids")
 	
 	if err!=nil{
 		return &SolveResult{g,false},err
@@ -505,6 +608,8 @@ func (g *grid) Solve() (*SolveResult,error){
 		for res:= range resChans[i] {
 			if res.m_solved{
 				return &res,nil
+			}else{
+				fmt.Println("Failed result returned on channel")
 			}
 		}
 	}
@@ -552,7 +657,9 @@ func main() {
 	var g grid
 	
 	g.Fill(puzzle)
+	fmt.Println("Puzzle to solve")
 	fmt.Println(g)
+	
 	res,err := g.Solve()
 	if err != nil{
 		fmt.Println("Error solving puzzle: " + err.Error())
@@ -560,8 +667,14 @@ func main() {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}else{
 		fmt.Println("")
-		fmt.Println("Solution Found")
-		fmt.Println(*res.m_grid)
+		
+		if res.m_solved && res.m_grid != nil{
+			fmt.Println("Solution Found")
+			fmt.Println(*res.m_grid)	
+		}else{
+			fmt.Println("unable to solve puzzle")
+		}
+		
 	}
 	
 }
