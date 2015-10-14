@@ -1,6 +1,9 @@
 package sudoku
 
-import "testing"
+import (
+		"testing"
+		"strconv"
+)
 
 func TestGrid(t *testing.T){
 	puzzles := [1][9][9]int{	
@@ -41,7 +44,7 @@ func TestGrid(t *testing.T){
 		}else{
 			if res.Solved() && res.Grid() != nil{
 				if !res.Grid().KnownEquals(solutions[i]){
-					t.Errorf("Solution found, but did not match expected solution instead got\n" + res.Grid().String())
+					t.Errorf("Test " + strconv.Itoa(i) + ": Solution found, but did not match expected solution instead got\n" + res.Grid().String())
 				}	
 			}else{
 				t.Errorf("unable to solve puzzle")
