@@ -346,6 +346,21 @@ func (l* line) validate() bool{
 	return validate(known)
 }
 
+func (l line) String() string{
+	str := ""
+	for _,c := range l.m_cells{
+		if c.IsKnown(){
+			v,err:= c.Known()
+			if err == nil{
+				str+=strconv.Itoa(v)	
+			}
+		}else{
+			str+="x"
+		}
+	}
+	return str
+} 
+
 //Grid which represents the 3x3 collection of squares which represent the entire puzzle
 const ROW_LENGTH = 9
 const COL_LENGTH = 9
@@ -649,12 +664,12 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 func (g *grid) Solve() (*SolveResult,error){
 	
 	var err error
-	//solvePasses:=0
+	solvePasses:=0
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
-		//fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
-		//solvePasses++
-		//fmt.Println(g)
+		fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
+		solvePasses++
+		fmt.Println(g)
 		if err != nil{
 			return &SolveResult{nil,false},err
 		}
@@ -744,7 +759,24 @@ func main() {
 	g.Fill(puzzle)
 	fmt.Println("Puzzle to solve")
 	fmt.Println(g)
+	/*
+	fmt.Println("rows")
+	for i,r := range g.m_rows{
+		fmt.Println("row: " + strconv.Itoa(i) + " length: " + strconv.Itoa(len(r.m_cells)))
+		fmt.Println(r.m_cells)
+		fmt.Println(r)
+	}
+	fmt.Println("end rows")
 	
+	fmt.Println("cols")
+	for i,c := range g.m_cols{
+		fmt.Println("col: " + strconv.Itoa(i) + " length: " + strconv.Itoa(len(c.m_cells)))
+		fmt.Println(c.m_cells)
+		fmt.Println(c)
+	}
+	fmt.Println("end cols")
+	
+	return*/
 	res,err := g.Solve()
 	if err != nil{
 		fmt.Println("Error solving puzzle: " + err.Error())
