@@ -1,4 +1,4 @@
-package main
+package sudoku
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ func validate(known []int) bool{
 	return true
 }
 
-//Cells which store individual numbers in the grid
+//Cells which store individual numbers in the Grid
 type cell struct {
 	m_possible 	map[int]bool 
 	m_x,m_y 	int
@@ -177,7 +177,7 @@ func (cells cellPtrSlice) TakeKnownFromPossible(known []int) (bool,error){
 	return changed,nil
 }
 
-//Squares which represent one of each of the 9 squares in a grid, each of which 
+//Squares which represent one of each of the 9 squares in a Grid, each of which 
 //references a 3x3 collection of cells.
 
 type square struct {
@@ -301,7 +301,7 @@ func (s* square) AlignedCellOnlyPairs() ([]pair,error){
 	return foundPairs,nil
 }
 
-//A horizontal or vertical line of 9 cells through the entire grid.
+//A horizontal or vertical line of 9 cells through the entire Grid.
 type line struct {
 	m_cells 		cellPtrSlice
 	m_rowAligned	bool
@@ -360,7 +360,7 @@ const COL_LENGTH = 9
 const NUM_SQUARES = COL_LENGTH
 const SQUARE_SIZE = 3
 
-type grid struct {
+type Grid struct {
 	m_squares 	[]square
 	m_rows		[]line
 	m_cols		[]line
@@ -369,14 +369,14 @@ type grid struct {
 	m_cells		[][]cell
 }
 
-func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*grid, error){
-	var g grid
+func New(puzzle [COL_LENGTH][ROW_LENGTH]int) (*Grid, error){
+	var g Grid
 	g.Init();
 	g.Fill(puzzle)
 	return &g,nil
 } 
 
-func (g *grid) validate() bool{
+func (g *Grid) validate() bool{
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
 			if !g.m_cells[x][y].validate(){
@@ -394,7 +394,7 @@ func (g *grid) validate() bool{
 	return true
 }
 
-func (g *grid) Init() {
+func (g *Grid) Init() {
 	//Init the raw cells themselves that actually store the grid data
 	g.m_cells = make([][]cell,COL_LENGTH)
 	for i :=0; i< len(g.m_cells); i++{
@@ -478,7 +478,7 @@ func (g *grid) Init() {
 	
 }
 
-func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
+func (g *Grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	g.Init()
 	
 	
@@ -494,7 +494,7 @@ func (g *grid) Fill(puzzle [COL_LENGTH][ROW_LENGTH]int){
 	
 }
 
-func (g grid) Solved() (bool,error) {
+func (g Grid) Solved() (bool,error) {
 	for _,s := range g.m_sets{
 		solved,err := s.Solved()
 		if err != nil{
@@ -510,7 +510,7 @@ func (g grid) Solved() (bool,error) {
 	return true,nil
 }
 
-func (g *grid) squareExclusionReduce() (bool,error){
+func (g *Grid) squareExclusionReduce() (bool,error){
 	changed := false
 	/*for i,_ := range g.m_squares{
 		s := &g.m_squares[i]
@@ -527,7 +527,7 @@ func (g *grid) squareExclusionReduce() (bool,error){
 	return changed,nil	
 }
 
-func(g *grid) reducePossiblePass() (bool, error){
+func(g *Grid) reducePossiblePass() (bool, error){
 	changed := false
 	
 	for pass:=0;pass<2;pass++{
@@ -548,7 +548,7 @@ func(g *grid) reducePossiblePass() (bool, error){
 	return changed,nil
 }
 
-func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
+func (g *Grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 	var puzzle [COL_LENGTH][ROW_LENGTH]int
 	for x,_ := range puzzle{
 		for y,_ := range puzzle[x]{
@@ -565,18 +565,18 @@ func (g *grid) Puzzle() [COL_LENGTH][ROW_LENGTH]int{
 	return puzzle
 }
 
-func (g *grid) setKnown( x,y, known int) error{
+func (g *Grid) setKnown( x,y, known int) error{
 	//should probably check if grid is initialised and return error if it isn't
 	g.m_cells[x][y].SetKnownTo(known)
 	
 	return nil
 }
 
-func (g *grid) DuplicateGrid() (*grid,error){
+func (g *Grid) DuplicateGrid() (*Grid,error){
 	return New(g.Puzzle())
 }
 
-func (g* grid) TotalPossible() (int, error){
+func (g* Grid) TotalPossible() (int, error){
 	totalPoss := 0
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
@@ -594,10 +594,10 @@ func (g* grid) TotalPossible() (int, error){
 	return totalPoss,nil
 }
 
-func (g *grid) GenerateGuessGrids() ([]*grid, error){
+func (g *Grid) GenerateGuessGrids() ([]*Grid, error){
 	
 	totalPoss,err := g.TotalPossible()
-	guesses := make([]*grid,0,totalPoss)
+	guesses := make([]*Grid,0,totalPoss)
 	if err != nil{
 		return guesses,err
 	}
@@ -645,11 +645,19 @@ func (g *grid) GenerateGuessGrids() ([]*grid, error){
 }
 
 type SolveResult struct{
-	m_grid 		*grid
+	m_grid 		*Grid
 	m_solved 	bool
 }
 
-func startSolveRoutine(ch chan SolveResult, g *grid) {
+func (s *SolveResult) Grid() *Grid{
+	return s.m_grid
+}
+
+func (s *SolveResult) Solved() bool{
+	return s.m_solved
+}
+
+func startSolveRoutine(ch chan SolveResult, g *Grid) {
 	
 	defer close(ch)
 	res, err := g.Solve()
@@ -662,7 +670,7 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 	ch<-*res
 }
 
-func (g *grid) Solve() (*SolveResult,error){
+func (g *Grid) Solve() (*SolveResult,error){
 	
 	var err error
 	for changed:=true; changed;{
@@ -709,7 +717,7 @@ func (g *grid) Solve() (*SolveResult,error){
 	return &SolveResult{nil,false},errors.Wrap(SolveError{"Unable to solve puzzle"},1)
 }
 
-func (g grid) String() string {
+func (g Grid) String() string {
 	var str string
 	
 	if len(g.m_cells) < COL_LENGTH{
@@ -731,42 +739,5 @@ func (g grid) String() string {
 	return str
 }
 
-// Main code
 
-func main() {
-	
-	puzzle := [9][9]int{	{3,0,0,9,6,0,0,0,0},
-							{1,4,0,0,0,5,0,9,0},
-							{0,0,5,0,0,0,0,0,8},
-							{0,0,0,0,5,0,0,2,0},
-							{0,0,3,8,0,0,0,1,9},
-							{0,0,0,6,4,0,0,3,0},
-							{0,0,0,0,0,0,0,0,1},
-							{8,0,0,0,2,0,0,0,0},
-							{0,0,1,0,0,3,0,0,4},
-	}
-	
-	var g grid
-	
-	g.Fill(puzzle)
-	fmt.Println("Puzzle to solve")
-	fmt.Println(g)
-	res,err := g.Solve()
-	if err != nil{
-		fmt.Println("Error solving puzzle: " + err.Error())
-		fmt.Println("Stacktrace")
-		fmt.Println(err.(*errors.Error).ErrorStack())
-	}else{
-		fmt.Println("")
-		
-		if res.m_solved && res.m_grid != nil{
-			fmt.Println("Solution Found")
-			fmt.Println(*res.m_grid)	
-		}else{
-			fmt.Println("unable to solve puzzle")
-		}
-		
-	}
-	
-}
 

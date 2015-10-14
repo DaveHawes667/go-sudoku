@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/DaveHawes667/go-sudoku/sudoku"
+	"github.com/go-errors/errors"
 )
 
 // Main code
@@ -20,7 +21,7 @@ func main() {
 							{0,0,1,0,0,3,0,0,4},
 	}
 	
-	var g sudoku.grid
+	var g sudoku.Grid
 	
 	g.Fill(puzzle)
 	fmt.Println("Puzzle to solve")
@@ -33,9 +34,9 @@ func main() {
 	}else{
 		fmt.Println("")
 		
-		if res.m_solved && res.m_grid != nil{
+		if res.Solved() && res.Grid() != nil{
 			fmt.Println("Solution Found")
-			fmt.Println(*res.m_grid)	
+			fmt.Println(*res.Grid())	
 		}else{
 			fmt.Println("unable to solve puzzle")
 		}
