@@ -611,7 +611,9 @@ func (g *grid) GenerateGuessGrids() ([]*grid, error){
 	if err != nil{
 		return guesses,err
 	}
-	
+	smallPoss := 99
+	smX:=0
+	smY:=0
 	for x,_ := range g.m_cells{
 		for y,_:= range g.m_cells[x]{
 			if !g.m_cells[x][y].IsKnown(){
@@ -620,23 +622,34 @@ func (g *grid) GenerateGuessGrids() ([]*grid, error){
 				if err!=nil{
 					return guesses,err
 				}
-				
-				for _,v := range possibles{
-					guess,err := g.DuplicateGrid()
-					if err!=nil{
-						return guesses,err
-					}
-					err = guess.setKnown(x,y,v)
-					if err!=nil{
-						return guesses,err
-					}
-					guesses = append(guesses,guess)
+				if len(possibles) < smallPoss{
+					smallPoss=len(possibles)
+					smX=x
+					smY=y
 				}
+				
 			}
 		}
 	}
 	
-	
+	if smallPoss < 99{
+		possibles,err := g.m_cells[smX][smY].Possibles()
+		if err!=nil{
+			return guesses,err
+		}
+		for _,v := range possibles{
+			guess,err := g.DuplicateGrid()
+			if err!=nil{
+				return guesses,err
+			}
+			err = guess.setKnown(smX,smY,v)
+			if err!=nil{
+				return guesses,err
+			}
+			guesses = append(guesses,guess)
+		}
+	}
+		
 	return guesses,nil
 	
 }
@@ -664,12 +677,12 @@ func startSolveRoutine(ch chan SolveResult, g *grid) {
 func (g *grid) Solve() (*SolveResult,error){
 	
 	var err error
-	solvePasses:=0
+	//solvePasses:=0
 	for changed:=true; changed;{
 		changed, err = g.reducePossiblePass()
-		fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
-		solvePasses++
-		fmt.Println(g)
+		//fmt.Println("AFTER REDUCE PASS " + strconv.Itoa(solvePasses))
+		//solvePasses++
+		//fmt.Println(g)
 		if err != nil{
 			return &SolveResult{nil,false},err
 		}
