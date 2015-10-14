@@ -32,8 +32,6 @@ func main() {
 		fmt.Println("Stacktrace")
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}else{
-		fmt.Println("")
-		
 		if res.Solved() && res.Grid() != nil{
 			fmt.Println("Solution Found")
 			fmt.Println(*res.Grid())	
